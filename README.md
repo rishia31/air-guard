@@ -57,7 +57,7 @@ flowchart LR
 |---|---|---|
 | `ml/` | Cohort simulator, `AirmateRiskNet` (PyTorch), Captum explanations, serving engine, rule fallback | ✅ done, one failing test (see Known issues) |
 | `backend/` | FastAPI: ingest, risk, SSE, Grok agent, safety, community, buddy, report | 🟡 foundation runs; features stubbed (501) |
-| `web/` | Next.js static export served by the backend | ⬜ not started (A3) |
+| `web/` | Next.js static export served by the backend | 🟡 scaffold, API client and live stream merged; pages in progress (A3, A4) |
 | `firmware/` | ESP32 PlatformIO firmware | ⬜ not started (A5) |
 | `scripts/device_sim.py` | Device simulator with the demo scenarios | ⬜ not started (A5) |
 | `docs/` | `API.md` contract; later `DEMO.md`, `DEVPOST.md`, `FACTS.md`, `HARDWARE.md` | 🟡 |
@@ -160,6 +160,6 @@ Fill in the deadline and count backwards:
 | A0 foundation | ✅ backend runs, contracts and briefs written |
 | A1 agent-voice | ⬜ |
 | A2 ml-demo | ⬜ |
-| A3 web-core | ⬜ |
+| A3 web-core | ✅ scaffold merged (b7dbec5); dashboard next |
 | A4 community-care | ⬜ |
 | A5 device | ⬜ |
