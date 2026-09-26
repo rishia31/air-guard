@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 import torch
-
 from airmate_ml.engine import DEFAULT_ARTIFACT, History, RiskEngine
 from airmate_ml.rules import rule_score
 from airmate_ml.schema import BIN_SECONDS, BINS_PER_DAY, HISTORY_DAYS, WINDOW_BINS, band_for

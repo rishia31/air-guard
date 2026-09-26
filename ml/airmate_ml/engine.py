@@ -134,12 +134,12 @@ class RiskEngine:
             with torch.no_grad():
                 probs = self.model.cumulative_risk(seq, ctx)[0].numpy()
             score = 100.0 * float(probs[SCORE_HORIZON_INDEX])
-            result["probabilities"] = {f"{hh}h": round(float(p), 4) for hh, p in zip(HORIZON_HOURS, probs)}
+            result["probabilities"] = {f"{hh}h": round(float(p), 4) for hh, p in zip(HORIZON_HOURS, probs, strict=True)}
             contributions = {}
             result["normal_day_score"] = None
             if explain and self.explainer is not None:
                 values, _, normal_day = self.explainer.explain(seq, ctx)
-                contributions = {g: float(v) for g, v in zip(self.explainer.groups, values[0])}
+                contributions = {g: float(v) for g, v in zip(self.explainer.groups, values[0], strict=True)}
                 result["normal_day_score"] = round(float(normal_day[0]), 1)
 
         result["score"] = int(round(score))

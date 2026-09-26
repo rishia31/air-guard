@@ -43,9 +43,14 @@ class Settings(BaseSettings):
 
     airmate_offline: bool = False  # skip outside-data and map lookups (tests, no Wi-Fi)
     airmate_seed: bool = True  # seed demo users and a week of data when the database is empty
+    airmate_model_path: Path | None = None  # defaults to the artifact shipped in ml/airmate_ml/artifacts
 
     risk_min_interval_s: float = 4.0
     high_risk_score: int = 45
+    # Check in on a sudden jump too, not only above high_risk_score: scores usually sit in single digits,
+    # so a dust spike that moves 5 -> 20 matters even though it never crosses 45.
+    checkin_jump_points: int = 12
+    checkin_jump_window_s: int = 30 * 60
     checkin_cooldown_s: int = 15 * 60
     buddy_nudge_delay_s: int = 120  # nudge the buddy if the patient ignores Airmate's check-in
 

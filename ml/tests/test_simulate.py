@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-
 from airmate_ml.data import build_dataset, split_users
 from airmate_ml.schema import BINS_PER_DAY, SENSORS, TRIGGERS, WINDOW_BINS
 from airmate_ml.simulate import sample_people, simulate_cohort, simulate_people

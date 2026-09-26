@@ -19,6 +19,9 @@ dependencies = [
 # Supabase / any hosted Postgres: set DATABASE_URL=postgresql+psycopg://...
 postgres = ["psycopg[binary]>=3.1"]
 
+[project.scripts]
+airmate-api = "airmate_api.main:run"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

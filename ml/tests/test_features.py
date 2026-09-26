@@ -1,7 +1,6 @@
 import numpy as np
-
 from airmate_ml.aqi import category, pm25_to_aqi
-from airmate_ml.features import SEQ_INDEX, CTX_INDEX, bin_end_hours, bin_series, build_timeline
+from airmate_ml.features import CTX_INDEX, SEQ_INDEX, bin_end_hours, bin_series, build_timeline
 from airmate_ml.schema import BIN_SECONDS, BINS_PER_DAY, BINS_PER_HOUR, CTX_FEATURES, SENSORS, SEQ_FEATURES
 
 
