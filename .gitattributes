@@ -1,0 +1,4 @@
+# Everyone (Windows, WSL, macOS, Codex) sees LF line endings.
+* text=auto eol=lf
+*.pt binary
+*.png binary
