@@ -72,4 +72,4 @@ Calm, clinical, friendly: lots of white space, one accent per band (`#10b981` / 
 runs, the call overlay appears on a check-in, and the whole app is served by `uv run airmate-api`.
 
 ## Status
-- [ ] 1 scaffold · [ ] 2 dashboard · [ ] 3 call overlay · [ ] 4 emergency · [ ] 5 talk · [ ] 6 settings · [ ] 7 realtime
+- [x] 1 scaffold · [ ] 2 dashboard · [ ] 3 call overlay · [ ] 4 emergency · [ ] 5 talk · [ ] 6 settings · [ ] 7 realtime
