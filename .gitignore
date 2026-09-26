@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Env / secrets
+.env
+.env.local
+*.env
+!.env.example
+
+# Local data
+*.db
+*.sqlite3
+ml/data/
+ml/artifacts/runs/
+backend/data/
+
+# Hugging Face / model caches
+.cache/
+
+# Node / Next.js
+node_modules/
+web/.next/
+web/out/
+web/next-env.d.ts
+*.tsbuildinfo
+
+# PlatformIO
+firmware/.pio/
+firmware/include/secrets.h
+
+# OS / editors
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/

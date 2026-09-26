@@ -1,0 +1,43 @@
+[project]
+name = "airmate-workspace"
+version = "0.1.0"
+description = "Airmate: asthma early-warning device, Grok voice agent, community and doctor reports (HackGT 13)"
+requires-python = ">=3.10"
+dependencies = ["airmate-ml", "airmate-api"]
+
+[project.optional-dependencies]
+cough = ["airmate-ml[cough]"]
+postgres = ["airmate-api[postgres]"]
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["ml", "backend"]
+
+[tool.uv.sources]
+airmate-ml = { workspace = true }
+airmate-api = { workspace = true }
+# CPU-only PyTorch wheels on Linux/Windows (keeps installs ~200 MB instead of multi-GB CUDA builds).
+# macOS uses the default PyPI wheels, which include Apple Silicon (MPS) support.
+torch = [{ index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["ml/tests", "backend/tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501", "B008"]
