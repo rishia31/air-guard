@@ -1,0 +1,125 @@
+{
+  "gru": {
+    "1h": {
+      "n": 169921,
+      "base_rate": 0.0251,
+      "auroc": 0.7973,
+      "auprc": 0.1473,
+      "brier": 0.0228,
+      "ece": 0.0021,
+      "mean_pred": 0.0246
+    },
+    "4h": {
+      "n": 167859,
+      "base_rate": 0.0882,
+      "auroc": 0.7751,
+      "auprc": 0.3181,
+      "brier": 0.0701,
+      "ece": 0.0071,
+      "mean_pred": 0.0846
+    },
+    "12h": {
+      "n": 163323,
+      "base_rate": 0.2217,
+      "auroc": 0.7507,
+      "auprc": 0.5042,
+      "brier": 0.1452,
+      "ece": 0.0236,
+      "mean_pred": 0.2039
+    }
+  },
+  "rules": {
+    "4h": {
+      "n": 167859,
+      "base_rate": 0.0882,
+      "auroc": 0.6719,
+      "auprc": 0.1874
+    }
+  },
+  "logistic_regression": {
+    "4h": {
+      "n": 167859,
+      "base_rate": 0.0882,
+      "auroc": 0.7645,
+      "auprc": 0.2922,
+      "brier": 0.0715,
+      "ece": 0.0054,
+      "mean_pred": 0.0836
+    }
+  },
+  "gradient_boosting": {
+    "4h": {
+      "n": 167859,
+      "base_rate": 0.0882,
+      "auroc": 0.7727,
+      "auprc": 0.3115,
+      "brier": 0.0706,
+      "ece": 0.0136,
+      "mean_pred": 0.0803
+    }
+  },
+  "oracle": {
+    "4h": {
+      "n": 167859,
+      "base_rate": 0.0882,
+      "auroc": 0.7524,
+      "auprc": 0.3468
+    }
+  },
+  "explanations": {
+    "n": 1500,
+    "top1_trigger_accuracy": 0.564,
+    "majority_class_rate": 0.4207,
+    "per_trigger_recall": {
+      "dust": 0.453,
+      "smoke": 0.374,
+      "pollen": 0.732,
+      "humidity": 0.545,
+      "odors": 0.492,
+      "cold_air": 0.538
+    }
+  },
+  "training": {
+    "users": 1200,
+    "days": 10,
+    "train_users": 840,
+    "val_users": 180,
+    "test_users": 180,
+    "train_windows": 1327200,
+    "test_windows": 170640,
+    "parameters": 52804,
+    "epochs": 5,
+    "weight_decay": 0.01,
+    "dropout": 0.2,
+    "sensor_dropout": 0.1,
+    "best_val_loss": 0.19842,
+    "seconds": 169.8,
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 0.29485541784763336,
+        "val_loss": 0.20130161941051483
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.2015180648267269,
+        "val_loss": 0.19842088222503662
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.19593695256114005,
+        "val_loss": 0.20138712227344513
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.191541309684515,
+        "val_loss": 0.20536911487579346
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.1863360324203968,
+        "val_loss": 0.21028073132038116
+      }
+    ]
+  }
+}
