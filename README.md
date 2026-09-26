@@ -1,12 +1,15 @@
 # Airmate
 
-**An early warning for asthma, from the air in your own room.** A small ESP32 device measures dust,
-fine particles, chemical odors, CO₂, temperature and humidity. A PyTorch model turns the last few
-hours into the chance you'll need your rescue inhaler in the next 1, 4 and 12 hours, and explains
-why ("Dust is 7× your normal"). When risk jumps, Airmate, a Grok voice agent, calls you, walks
-you through *your own* action plan, and, if you describe an emergency, tells you to call 911 and
-alerts your asthma buddy. A community map shows anonymized air hotspots, and a one-page report
-gives your doctor the month at a glance.
+**An early warning for asthma that reads the air inside and outside your home, and learns what sets
+*you* off.** A small ESP32 device measures dust, fine particles, chemical odors, CO₂, temperature and
+humidity indoors. Airmate combines that with the outdoor air-quality index, pollen and weather
+forecasts for where you live, your recent rescue-inhaler use and symptoms, the time of day, and the
+triggers you've told it about. A PyTorch model turns all of it into the chance you'll need your rescue
+inhaler in the next 1, 4 and 12 hours, and explains why ("Dust is 7× your normal", "Pollen forecast
+is high"). When risk jumps, Airmate, a Grok voice agent, calls you, walks you through *your own*
+action plan, and, if you describe an emergency, tells you to call 911 and alerts your asthma buddy.
+Beyond your home, a community map pools anonymized readings from other Airmates and shared
+sensors into neighborhood air hotspots, and a one-page report gives your doctor the month at a glance.
 
 Built at HackGT 13.
 
