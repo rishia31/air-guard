@@ -45,6 +45,9 @@ class RiskService:
         self._latest: dict[str, dict] = {}
         self._computed_at: dict[str, float] = {}
         self._locks: dict[str, asyncio.Lock] = {}
+        self._windows: dict[str, HistoryWindow] = {}
+        self._deferred: set[str] = set()
+        self._tasks: set[asyncio.Task] = set()
         self._engine_lock = asyncio.Lock()  # one assessment at a time; Captum explainers are not thread-safe
 
     def add_listener(self, listener: RiskListener) -> None:
@@ -70,23 +73,23 @@ class RiskService:
     async def update(self, user_id: str, *, force: bool = False) -> dict | None:
         """Re-score a person. Throttled to one run per ``risk_min_interval_s`` unless ``force``.
 
-        Returns the new assessment, or None when throttled or the user does not exist.
+        A throttled call is not lost: one trailing run is scheduled for when the interval ends, so
+        a spike that arrives right after a score still shows up within a few seconds.
+        Returns the new assessment, or None when throttled/deferred or the user does not exist.
         """
         now = time.time()
-        if not force and now - self._computed_at.get(user_id, 0.0) < self.settings.risk_min_interval_s:
-            return None
         lock = self._locks.setdefault(user_id, asyncio.Lock())
-        if lock.locked() and not force:
+        wait = self.settings.risk_min_interval_s - (now - self._computed_at.get(user_id, 0.0))
+        if not force and (wait > 0 or lock.locked()):
+            self._defer(user_id, max(wait, 0.5))
             return None
         async with lock:
             now = time.time()
             self._computed_at[user_id] = now
-            with self.db.session() as session:
-                user = session.get(User, user_id)
-                if user is None:
-                    return None
-                history = build_history(session, user, now)
-                lat, lon = user.lat, user.lon
+            loaded = await asyncio.to_thread(self._load, user_id, now)
+            if loaded is None:
+                return None
+            history, (lat, lon) = loaded
             history.outdoor = await outdoor.get_outdoor(lat, lon, self.settings)
             async with self._engine_lock:
                 assessment = await asyncio.to_thread(self.engine.assess, history)
@@ -106,6 +109,37 @@ class RiskService:
                 log.exception("Risk listener %s failed", getattr(listener, "__name__", listener))
         return assessment
 
+    def _defer(self, user_id: str, delay: float) -> None:
+        if user_id in self._deferred:
+            return
+
+        async def run() -> None:
+            await asyncio.sleep(delay)
+            self._deferred.discard(user_id)
+            await self.update(user_id)
+
+        self._deferred.add(user_id)
+        task = asyncio.get_running_loop().create_task(run())
+        self._tasks.add(task)  # keep a reference so the task isn't garbage-collected
+        task.add_done_callback(self._tasks.discard)
+
+    def _load(self, user_id: str, now: float) -> tuple[History, tuple[float | None, float | None]] | None:
+        """Runs in a worker thread, under the person's lock."""
+        with self.db.session() as session:
+            user = session.get(User, user_id)
+            if user is None:
+                return None
+            window = self._windows.setdefault(user_id, HistoryWindow())
+            return build_history(session, user, now, window), (user.lat, user.lon)
+
+    def invalidate(self, user_id: str | None = None) -> None:
+        """Forget cached history and scores (after deleting or rewriting events, e.g. a reseed)."""
+        for cache in (self._windows, self._latest):
+            if user_id is None:
+                cache.clear()
+            else:
+                cache.pop(user_id, None)
+
     def history_points(self, user_id: str, since: float) -> list[dict]:
         with self.db.session() as session:
             rows = session.execute(
@@ -116,38 +150,79 @@ class RiskService:
         return [{"ts": ts, "score": data["score"], "band": data["band"]} for ts, data in rows]
 
 
-def build_history(session: Session, user: User, now: float) -> History:
-    """Everything the engine needs about one person, from the events table."""
-    rows = session.execute(
-        select(Event.kind, Event.ts, Event.data)
-        .where(
-            Event.user_id == user.id,
-            Event.kind.in_(("reading", "puff", "symptom")),
-            Event.ts > now - HISTORY_DAYS * 86400,
-            Event.ts <= now,
+class HistoryWindow:
+    """One person's last week of readings, puffs and symptoms, kept in memory between assessments.
+
+    Decoding a week of 15-second readings from JSON takes ~0.7 s, so each refresh only fetches events
+    with a higher id than the last one seen. A periodic full reload covers anything that slipped past
+    (rows committed out of id order on Postgres, deletions).
+    """
+
+    FULL_RELOAD_S = 600.0
+
+    def __init__(self) -> None:
+        self.last_id = 0
+        self.loaded_at = 0.0
+        self.reading_ts = np.zeros(0)
+        self.readings = np.zeros((0, len(SENSORS)))
+        self.puff_ts = np.zeros(0)
+        self.puff_counts = np.zeros(0)
+        self.symptom_ts = np.zeros(0)
+
+    def refresh(self, session: Session, user_id: str, now: float) -> None:
+        since = now - HISTORY_DAYS * 86400
+        if now - self.loaded_at > self.FULL_RELOAD_S:
+            self.__init__()
+            self.loaded_at = now
+        rows = session.execute(
+            select(Event.id, Event.kind, Event.ts, Event.data).where(
+                Event.user_id == user_id,
+                Event.kind.in_(("reading", "puff", "symptom")),
+                Event.id > self.last_id,
+                Event.ts > since,
+            )
+        ).all()
+        reading_ts, readings, puff_ts, puff_counts, symptom_ts = [], [], [], [], []
+        for event_id, kind, ts, data in rows:
+            self.last_id = max(self.last_id, event_id)
+            if kind == "reading":
+                reading_ts.append(ts)
+                readings.append([_num(data.get(name)) for name in SENSORS])
+            elif kind == "puff":
+                puff_ts.append(ts)
+                puff_counts.append(float(data.get("count", 1)))
+            else:
+                symptom_ts.append(ts)
+        keep = self.reading_ts > since
+        self.reading_ts = np.concatenate([self.reading_ts[keep], reading_ts])
+        self.readings = np.concatenate([self.readings[keep], np.asarray(readings, dtype=np.float64).reshape(-1, len(SENSORS))])
+        keep = self.puff_ts > since
+        self.puff_ts = np.concatenate([self.puff_ts[keep], puff_ts])
+        self.puff_counts = np.concatenate([self.puff_counts[keep], puff_counts])
+        self.symptom_ts = np.concatenate([self.symptom_ts[self.symptom_ts > since], symptom_ts])
+
+    def history(self, user: User, now: float) -> History:
+        r, p, s = self.reading_ts <= now, self.puff_ts <= now, self.symptom_ts <= now
+        return History(
+            now=now,
+            reading_ts=self.reading_ts[r],
+            readings=self.readings[r],
+            puff_ts=self.puff_ts[p],
+            puff_counts=self.puff_counts[p],
+            symptom_ts=self.symptom_ts[s],
+            triggers=list(user.triggers or []),
+            utc_offset_seconds=utc_offset(user.tz, now),
         )
-        .order_by(Event.ts)
-    ).all()
-    reading_ts, readings, puff_ts, puff_counts, symptom_ts = [], [], [], [], []
-    for kind, ts, data in rows:
-        if kind == "reading":
-            reading_ts.append(ts)
-            readings.append([_num(data.get(name)) for name in SENSORS])
-        elif kind == "puff":
-            puff_ts.append(ts)
-            puff_counts.append(float(data.get("count", 1)))
-        else:
-            symptom_ts.append(ts)
-    return History(
-        now=now,
-        reading_ts=np.asarray(reading_ts, dtype=np.float64),
-        readings=np.asarray(readings, dtype=np.float64).reshape(-1, len(SENSORS)),
-        puff_ts=np.asarray(puff_ts, dtype=np.float64),
-        puff_counts=np.asarray(puff_counts, dtype=np.float64),
-        symptom_ts=np.asarray(symptom_ts, dtype=np.float64),
-        triggers=list(user.triggers or []),
-        utc_offset_seconds=utc_offset(user.tz, now),
-    )
+
+
+def build_history(session: Session, user: User, now: float, window: HistoryWindow | None = None) -> History:
+    """Everything the engine needs about one person, from the events table.
+
+    Pass the same ``window`` on every call for incremental loading; without one, the week is read in full.
+    """
+    window = window or HistoryWindow()
+    window.refresh(session, user.id, now)
+    return window.history(user, now)
 
 
 def utc_offset(tz: str | None, ts: float) -> float:

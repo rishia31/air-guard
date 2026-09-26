@@ -23,8 +23,9 @@ merge every PR, run integration, and protect the demo path.
    dashboard jumps → call overlay → answer → red flag → Jordan's phone. File issues to owners.
 3. **Contract changes**: only through you; update `schemas.py`, `docs/API.md`, and ping A3 for
    `types.ts` in the same PR.
-4. **Performance guard**: `RiskService.update` rebuilds a week per call; if seeded data makes it slow
-   (> 300 ms), add an in-memory per-user window cache.
+4. ~~**Performance guard**~~ done: a week of 15 s readings took 1.1 s per update and blocked the event
+   loop; now an incremental in-memory `HistoryWindow` (0.2 s, off the loop). Throttled updates are
+   deferred, not dropped. Community stream carries community devices only (home-location leak fixed).
 5. **Deployment for the demo**: one laptop runs `uv run airmate-api` serving `web/out`; phone and
    ESP32 on the same Wi-Fi (or a `cloudflared` tunnel). Rehearse on venue Wi-Fi.
 6. **Final README**: screenshots, how to run, architecture, the honesty note, team credits.

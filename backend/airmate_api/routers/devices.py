@@ -73,7 +73,9 @@ def ingest_readings(
         payload = {"device_id": device.id, "ts": newest[0], **newest[1]}
         if device.user_id:
             state.bus.user(device.user_id, "reading", payload)
-        if device.community or device.lat is not None:
+        # Only anonymous map-only sensors go out live; a person's device would reveal their home.
+        # Personal readings reach the map through the aggregated hotspots (A4), never raw.
+        if device.community and device.lat is not None:
             state.bus.publish("community", "reading", {**payload, "lat": device.lat, "lon": device.lon})
     if device.user_id:
         background.add_task(state.risk.update, device.user_id)

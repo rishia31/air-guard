@@ -109,7 +109,7 @@ A `: keep-alive` comment arrives every 15 s; reconnect on error (EventSource doe
 | type | topic | data | published by |
 |---|---|---|---|
 | `hello` | — | `{topics}` | lead |
-| `reading` | `user:<id>`, `community` | `{device_id, ts, pm25, pm10, co2, tvoc, temp_c, humidity}` (+`lat lon` on community) | lead |
+| `reading` | `user:<id>`, `community` | `{device_id, ts, pm25, pm10, co2, tvoc, temp_c, humidity}` (+`lat lon` on community, which carries **only** community devices, never a person's) | lead |
 | `risk` | `user:<id>` | `RiskOut` | lead |
 | `event` | `user:<id>` | `{id, kind, ts, data}` for puff / symptom / button / cough | lead |
 | `checkin` | `user:<id>` | `{id, ts, score, previous_score, reason: "jump"｜"high", factor: Factor｜null, message, audio_url｜null, expires_at}` | A1 |

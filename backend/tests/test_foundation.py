@@ -2,6 +2,7 @@
 
 import time
 
+import numpy as np
 from airmate_api.app import create_app
 from airmate_api.services.seed import DEMO_DEVICE_ID, DEMO_USER_ID
 from fastapi.testclient import TestClient
@@ -86,3 +87,56 @@ def test_feature_stubs_are_mounted(client):
     assert client.get("/api/community/hotspots").status_code in (200, 501)
     assert client.get("/api/users/maya/buddy").status_code in (200, 501)
     assert client.post("/api/users/maya/reports", json={}).status_code in (200, 501)
+
+
+def test_incremental_history_matches_a_full_reload(client):
+    from airmate_api.models import User
+    from airmate_api.services.risk import HistoryWindow, build_history
+
+    state = client.app.state.airmate
+    window = HistoryWindow()
+    _post_minutes(client, CALM, 20)
+    client.post(f"/api/users/{DEMO_USER_ID}/puffs", json={"count": 2})
+    with state.db.session() as session:
+        maya = session.get(User, DEMO_USER_ID)
+        build_history(session, maya, time.time(), window)
+    # New readings, including a late backfill with an old timestamp, and a symptom.
+    _post_minutes(client, {**CALM, "pm10": 180}, 5)
+    client.post(f"/api/devices/{DEMO_DEVICE_ID}/readings", json={"readings": [{**CALM, "age_s": 3 * 3600}]})
+    client.post(f"/api/users/{DEMO_USER_ID}/symptoms", json={"symptom": "cough"})
+    now = time.time()
+    with state.db.session() as session:
+        maya = session.get(User, DEMO_USER_ID)
+        incremental = build_history(session, maya, now, window)
+        full = build_history(session, maya, now)
+    order_i, order_f = np.argsort(incremental.reading_ts), np.argsort(full.reading_ts)
+    assert len(incremental.reading_ts) == len(full.reading_ts) == 26
+    assert np.array_equal(incremental.reading_ts[order_i], full.reading_ts[order_f])
+    assert np.array_equal(incremental.readings[order_i], full.readings[order_f], equal_nan=True)
+    assert incremental.puff_counts.sum() == full.puff_counts.sum() == 2
+    assert len(incremental.symptom_ts) == len(full.symptom_ts) == 1
+
+
+def test_personal_devices_never_publish_location_to_the_community(client, monkeypatch):
+    state = client.app.state.airmate
+    published = []
+    monkeypatch.setattr(state.bus, "publish", lambda topic, kind, data: published.append((topic, data)))
+    _post_minutes(client, CALM, 1)  # Maya's bedroom device has lat/lon (her home)
+    assert {topic for topic, _ in published} == {"user:maya"}  # the reading and the new risk score
+    client.put("/api/devices/park-1", json={"community": True, "lat": 33.78, "lon": -84.40})
+    client.post("/api/devices/park-1/readings", json={"readings": [CALM]})
+    community = [data for topic, data in published if topic == "community"]
+    assert len(community) == 1 and community[0]["device_id"] == "park-1"
+
+
+def test_throttled_updates_run_later_instead_of_being_dropped(settings):
+    import asyncio
+
+    settings.risk_min_interval_s = 1.0
+    with TestClient(create_app(settings)) as c:
+        _post_minutes(c, CALM, 10)  # scores now
+        _post_minutes(c, {**CALM, "pm10": 180}, 1)  # inside the interval: deferred, not dropped
+        assert len(c.get(f"/api/users/{DEMO_USER_ID}/risk/history?hours=1").json()) == 1
+        c.portal.call(asyncio.sleep, 1.5)  # let the app's event loop run the trailing update
+        history = c.get(f"/api/users/{DEMO_USER_ID}/risk/history?hours=1").json()
+        assert len(history) == 2 and history[1]["score"] > history[0]["score"]
